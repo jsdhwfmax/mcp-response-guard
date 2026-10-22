@@ -67,7 +67,9 @@ mcp-response-guard report .drift_log.db
 ```
 
 Same `--format` and `--output` options. A missing or empty store is not an
-error.
+error. For an empty store, JSON reports `{}` (the empty baseline mapping),
+SARIF reports a log with no results, and `--output` writes the selected format
+to the requested file, creating parent directories as needed.
 
 ## Detector codes
 

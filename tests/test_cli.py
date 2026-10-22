@@ -155,3 +155,41 @@ def test_report_json_output(runner, tmp_path):
     runner.invoke(main, ["record", response, "--tool", "fs.read", "--baseline", store])
     result = runner.invoke(main, ["report", store, "--format", "json"])
     assert "fs.read" in json.loads(result.output)
+
+
+@pytest.mark.parametrize("existing_store", [False, True])
+@pytest.mark.parametrize("fmt", ["text", "json", "sarif"])
+@pytest.mark.parametrize("write_file", [False, True])
+def test_empty_report_honors_format_and_destination(
+    runner, tmp_path, existing_store, fmt, write_file
+):
+    store = tmp_path / "empty.db"
+    if existing_store:
+        initial = runner.invoke(main, ["report", str(store)])
+        assert initial.exit_code == 0
+        assert store.is_file()
+    args = ["report", str(store), "--format", fmt]
+    output = tmp_path / "reports" / "empty.txt"
+    if write_file:
+        args += ["--output", str(output)]
+
+    result = runner.invoke(main, args)
+
+    assert result.exit_code == 0, result.output
+    if write_file:
+        assert result.output == ""
+        assert output.is_file()
+        payload = output.read_text(encoding="utf-8")
+    else:
+        payload = result.output
+    assert payload.endswith("\n")
+    if fmt == "text":
+        assert payload == f"No baselines stored in {store}\n"
+    elif fmt == "json":
+        assert json.loads(payload) == {}
+    else:
+        log = json.loads(payload)
+        assert log["version"] == "2.1.0"
+        assert log["$schema"].endswith("sarif-schema-2.1.0.json")
+        assert log["runs"][0]["results"] == []
+        assert log["runs"][0]["tool"]["driver"]["name"] == "mcp-response-guard"

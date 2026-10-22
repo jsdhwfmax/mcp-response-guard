@@ -126,7 +126,14 @@ def report(baseline, fmt, out) -> None:
     except ValueError as exc:
         raise click.ClickException(str(exc)) from None
     if not tracker.baselines:
-        click.echo(f"No baselines stored in {baseline}")
+        if fmt == "sarif":
+            _echo_violations([], fmt, out)
+        else:
+            payload = "{}" if fmt == "json" else f"No baselines stored in {baseline}"
+            if out:
+                _write_out(out, payload + "\n")
+            else:
+                click.echo(payload)
         return
     if fmt == "text":
         for tool, shape in sorted(tracker.baselines.items()):
